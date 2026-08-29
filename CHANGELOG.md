@@ -58,6 +58,26 @@ histórico de acompanhamento do projeto.
   Schema Zod sobre as variáveis de ambiente. O processo morre imediatamente com
   mensagem clara em vez de falhar de forma obscura na primeira requisição.
 
+- **Cliente web em React 19 + TypeScript**
+  Dashboard com cards, tela de detalhe com série histórica e seletor de janela,
+  favoritos com atualização otimista revertida em caso de falha. As respostas
+  da API são validadas pelos mesmos schemas Zod do servidor.
+
+- **Gráfico de série em SVG puro**
+  Sem biblioteca de gráficos: para uma linha única, a dependência traria mais
+  superfície de manutenção e de segurança que valor. Acompanhado de tabela de
+  dados completa, para que leitor de tela receba os números e não apenas a
+  palavra "gráfico".
+
+- **PWA instalável**
+  Manifest, ícones e service worker que faz cache apenas da casca do
+  aplicativo. `/api` nunca é interceptado — ver seção Segurança.
+
+- **Acessibilidade (WCAG 2.2 AA)**
+  Variação comunicada por três canais independentes (cor, seta e sinal
+  numérico), foco sempre visível, alvos de toque de 44 px, link para pular ao
+  conteúdo, `aria-pressed` no favorito e `prefers-reduced-motion` respeitado.
+
 - **Agendador de sincronização**
   Intervalo configurável, com `unref()` para não segurar o processo, e
   encerramento gracioso que fecha o servidor antes do pool de conexões.
@@ -90,6 +110,12 @@ histórico de acompanhamento do projeto.
   Cinco achados do `npm audit`, um deles crítico, na cadeia
   `vitest 2.x → vite → esbuild`. Atualização para Vitest 4.1.11 sem alteração
   de código de teste. `npm audit` passa a reportar zero.
+
+- **Service worker não faz cache de dados**
+  Num painel financeiro, servir cotação de cache é pior do que não servir nada:
+  transforma uma falha de rede visível numa informação errada silenciosa. O
+  service worker ignora `/api` por completo — se a rede cair, a interface mostra
+  o estado de erro, que é honesto. O cache cobre apenas HTML, JS, CSS e ícones.
 
 - **Endurecimento da camada HTTP**
   Helmet com CSP `default-src 'none'` (a API só devolve JSON), CORS por

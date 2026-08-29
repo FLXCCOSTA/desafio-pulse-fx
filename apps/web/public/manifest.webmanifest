@@ -1,0 +1,16 @@
+{
+  "name": "Pulse FX — câmbio e indicadores macro",
+  "short_name": "Pulse FX",
+  "description": "Acompanhe câmbio e indicadores macro do Brasil e dos Estados Unidos a partir de fontes públicas oficiais.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0b1116",
+  "theme_color": "#0b1f2a",
+  "lang": "pt-BR",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}

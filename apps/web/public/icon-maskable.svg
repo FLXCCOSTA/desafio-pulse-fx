@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Pulse FX">
+  <rect width="64" height="64" fill="#0a6c76"/>
+  <path d="M14 39 L21 39 L26 26 L32 48 L38 34 L43 39 L50 39"
+        fill="none" stroke="#ffffff" stroke-width="4"
+        stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
