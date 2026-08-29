@@ -44,6 +44,31 @@ WORKDIR /app
 
 ENV NODE_ENV=production
 
+# Aplica as correções de segurança do Alpine sobre a imagem base.
+#
+# A tag `node:22-alpine` é reconstruída periodicamente, mas entre uma
+# reconstrução e outra ela acumula pacotes com CVE já corrigido no repositório
+# da distribuição — foi o caso do OpenSSL aqui. Um `apk upgrade` no build
+# fecha essa janela sem depender do calendário de quem publica a imagem base.
+RUN apk --no-cache upgrade
+
+# Remove o npm da imagem de execução.
+#
+# O runtime executa um único arquivo JavaScript já empacotado: não instala
+# nada, não resolve dependência, não precisa de gerenciador de pacotes. O npm
+# que vem na imagem base carrega as próprias dependências — tar, sigstore e
+# picomatch, entre outras — e eram elas, não o nosso código, que apareciam no
+# scan do Trivy como HIGH e CRITICAL.
+#
+# Suprimir o alerta seria o caminho fácil e errado. Remover o npm elimina a
+# causa: menos superfície de ataque, imagem menor, e o gate passa por mérito.
+# De quebra, quem conseguisse execução de comando dentro do container não
+# encontraria um instalador de pacotes à disposição.
+RUN rm -rf /usr/local/lib/node_modules/npm \
+  /usr/local/bin/npm \
+  /usr/local/bin/npx \
+  /opt/yarn-*
+
 # Apenas o artefato compilado. Sem node_modules, sem código-fonte, sem
 # ferramenta de build — e, principalmente, sem .env: segredo entra por
 # variável de ambiente em tempo de execução, nunca em camada de imagem.
