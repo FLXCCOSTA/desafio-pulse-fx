@@ -47,8 +47,14 @@ export type VariationUnit = 'percent' | 'percentage_points';
  * - `calendar-months`: ancora no calendário e procura a observação de N meses
  *   antes. Correto para série mensal, onde a posição no array não garante a
  *   distância temporal se houver mês sem publicação.
+ * - `last-distinct-value`: procura o patamar anterior, ignorando repetições.
+ *   Necessário para taxa de política. Verificado contra a série 432 do SGS em
+ *   28/08/2026: o BCB publica a Selic meta todos os dias, inclusive sábado e
+ *   domingo, com o mesmo valor entre reuniões do Copom. Comparar com "a
+ *   observação anterior" devolveria zero quase sempre; o que interessa ao
+ *   usuário é a mudança em relação ao patamar anterior.
  */
-export type LookbackStrategy = 'observations' | 'calendar-months';
+export type LookbackStrategy = 'observations' | 'calendar-months' | 'last-distinct-value';
 
 export interface VariationPolicy {
   readonly strategy: LookbackStrategy;
@@ -70,10 +76,10 @@ export const DEFAULT_VARIATION_POLICY: Readonly<Record<SeriesKind, VariationPoli
     label: 'vs. pregão anterior',
   },
   policy_rate: {
-    strategy: 'observations',
+    strategy: 'last-distinct-value',
     lookback: 1,
     unit: 'percentage_points',
-    label: 'vs. leitura anterior',
+    label: 'vs. patamar anterior',
   },
   macro_monthly: {
     strategy: 'calendar-months',
@@ -95,10 +101,10 @@ export const MEDIUM_TERM_POLICY: Readonly<Record<SeriesKind, VariationPolicy>> =
     label: 'vs. 21 pregões atrás',
   },
   policy_rate: {
-    strategy: 'observations',
+    strategy: 'last-distinct-value',
     lookback: 4,
     unit: 'percentage_points',
-    label: 'vs. 4 leituras atrás',
+    label: 'vs. 4 patamares atrás',
   },
   macro_monthly: {
     strategy: 'calendar-months',

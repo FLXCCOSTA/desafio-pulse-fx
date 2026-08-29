@@ -82,6 +82,60 @@ describe('calculateVariation · taxa de política monetária', () => {
     expect(result.change).toBeCloseTo(0.5, 10);
     expect(result.unavailableReason).toBeNull();
   });
+
+  it('ignora repetições diárias e compara com o patamar anterior', () => {
+    // Cenário real da série 432 do SGS: o BCB publica a Selic meta todos os
+    // dias, inclusive fim de semana, repetindo o valor entre reuniões do Copom.
+    // Comparar com "a observação anterior" devolveria zero todo dia.
+    const series = [
+      obs('2026-08-20', 14.0),
+      obs('2026-08-21', 14.0),
+      obs('2026-08-22', 14.0), // sábado
+      obs('2026-08-23', 14.0), // domingo
+      obs('2026-08-24', 14.0),
+      obs('2026-08-25', 14.25), // decisão do Copom
+      obs('2026-08-26', 14.25),
+      obs('2026-08-27', 14.25),
+    ];
+
+    const result = calculateVariation(series, 'policy_rate');
+
+    expect(result.baseline?.referenceDate).toBe('2026-08-24');
+    expect(result.baseline?.value).toBe(14.0);
+    expect(result.change).toBeCloseTo(0.25, 10);
+    expect(result.unit).toBe('percentage_points');
+  });
+
+  it('admite ausência de base quando a taxa nunca mudou na janela', () => {
+    const series = Array.from({ length: 30 }, (_, index) =>
+      obs('2026-08-' + String(index + 1).padStart(2, '0'), 14.0),
+    );
+
+    const result = calculateVariation(series, 'policy_rate');
+
+    expect(result.latest?.value).toBe(14.0);
+    expect(result.baseline).toBeNull();
+    expect(result.unavailableReason).toBe('no_baseline');
+  });
+
+  it('retrocede vários patamares na janela de médio prazo', () => {
+    const series = [
+      obs('2026-01-05', 12.0),
+      obs('2026-02-05', 12.5),
+      obs('2026-03-05', 13.0),
+      obs('2026-04-05', 13.0),
+      obs('2026-05-05', 13.5),
+      obs('2026-06-05', 14.0),
+    ];
+
+    const result = calculateVariation(series, 'policy_rate', {
+      policy: MEDIUM_TERM_POLICY.policy_rate,
+    });
+
+    // Quatro patamares atrás de 14.0: 13.5, 13.0, 12.5, 12.0.
+    expect(result.baseline?.value).toBe(12.0);
+    expect(result.change).toBeCloseTo(2, 10);
+  });
 });
 
 describe('calculateVariation · macro mensal', () => {

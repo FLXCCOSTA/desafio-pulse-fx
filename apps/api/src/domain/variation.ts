@@ -74,6 +74,24 @@ function findBaseline(sorted: readonly Observation[], policy: VariationPolicy): 
   const latest = sorted.at(-1);
   if (!latest) return null;
 
+  if (policy.strategy === 'last-distinct-value') {
+    // Anda para trás pulando repetições. O resultado é a última observação do
+    // patamar anterior — para a Selic meta, o dia anterior à decisão do Copom.
+    let currentLevel = latest.value;
+    let levelsFound = 0;
+
+    for (let index = sorted.length - 2; index >= 0; index -= 1) {
+      const candidate = sorted[index];
+      if (!candidate || candidate.value === currentLevel) continue;
+
+      levelsFound += 1;
+      if (levelsFound === policy.lookback) return candidate;
+      currentLevel = candidate.value;
+    }
+
+    return null;
+  }
+
   const targetMonth = shiftMonths(latest.referenceDate, policy.lookback);
 
   // Série mensal pode ter mais de uma observação no mês alvo; vale a última.
