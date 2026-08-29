@@ -83,22 +83,19 @@ histórico de acompanhamento do projeto.
   encerramento gracioso que fecha o servidor antes do pool de conexões.
 
 - **Pipeline de CI com gates de segurança**
-  Jobs paralelos que falham por motivos distintos: qualidade estática, testes,
-  segurança, imagem e subida do ambiente. Inclui Unknown command: "audit"
-
-
-Did you mean this?
-  npm audit # Run a security audit
-To see a list of supported npm commands, run:
-  npm help a partir de
-  severidade moderada, varredura de segredos no histórico completo, scan de
-  imagem com Trivy, e verificação de que a imagem não roda como root nem
-  carrega . O job de Compose valida a promessa dos 15 minutos a cada
-  mudança, em vez de confiar que o README continua verdadeiro.
+  Cinco jobs paralelos que falham por motivos distintos: qualidade estática,
+  testes, segurança, imagem e subida do ambiente. Inclui `npm audit` a partir de
+  severidade moderada, varredura de segredos no histórico completo do Git, scan
+  de imagem com Trivy em `HIGH` e `CRITICAL`, e verificação de que a imagem não
+  roda como root nem carrega `.env`. O job de Compose valida a promessa dos 15
+  minutos do briefing a cada mudança, em vez de confiar que o README continua
+  verdadeiro.
 
 - **ESLint e Prettier configurados**
-  Regras com informação de tipo (), que pegam promise
-  não aguardada em rota e  vazando de resposta externa.
+  O script `lint` existia no `package.json` mas quebrava, porque não havia
+  configuração. Flat config do ESLint 9 com regras que exigem informação de
+  tipo (`recommendedTypeChecked`), que pegam promise não aguardada em rota
+  HTTP e `any` vazando de resposta externa.
 
 - **README raiz**
   Subida do ambiente, variáveis, séries escolhidas com justificativa, regra de
@@ -106,6 +103,23 @@ To see a list of supported npm commands, run:
   trade-offs e limitações conhecidas.
 
 ### Corrigido
+
+- **`setState` síncrono dentro de efeito no frontend** (`4764def`)
+  Presente nas duas páginas, causava renderização em cascata. A correção não foi
+  silenciar a regra: o estado de carregamento passou a ser **derivado** de um
+  carimbo na resposta, comparando o resultado guardado com a requisição atual.
+  Some a variável duplicada e some a cascata.
+
+- **Variação do IPCA calculada como se fosse índice** (`3e8e4c5`)
+  O card exibia "−73,08%", comparando 0,07% de julho/2026 com 0,26% de
+  julho/2025 — a variação percentual de uma taxa percentual. O tipo
+  `macro_monthly` foi separado em `macro_monthly_index` (US CPI, número-índice,
+  porcentagem) e `macro_monthly_rate` (IPCA, taxa, pontos percentuais).
+
+- **Falso alarme de defasagem em séries mensais** (`3e8e4c5`)
+  O limiar de 45 dias marcava IPCA e CPI como defasados em operação normal,
+  ignorando que a série é datada no primeiro dia do mês e a publicação leva mais
+  duas a três semanas. Passa a 70 dias.
 
 - **Taxa de política comparava dias, não patamares** (`e70ad10`)
   A Selic meta é publicada todos os dias, inclusive fins de semana, repetindo o
