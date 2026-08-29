@@ -23,8 +23,14 @@ export interface Observation {
 export type SeriesKind =
   /** Câmbio diário (PTAX). Publicado apenas em dias úteis. */
   | 'fx_daily'
-  /** Taxa de política monetária (Selic meta, Fed Funds). */
+  /** Taxa de política monetária (Selic meta, Fed Funds). Muda por decisão. */
   | 'policy_rate'
+  /**
+   * Juro de mercado com cotação diária (Treasury 10 anos). Diferente de
+   * `policy_rate`: muda todo pregão, então o patamar anterior é o dia anterior.
+   * Diferente de `fx_daily`: é taxa, logo varia em pontos percentuais.
+   */
+  | 'yield_daily'
   /** Índice macro de periodicidade mensal (IPCA, CPI). */
   | 'macro_monthly';
 
@@ -81,6 +87,12 @@ export const DEFAULT_VARIATION_POLICY: Readonly<Record<SeriesKind, VariationPoli
     unit: 'percentage_points',
     label: 'vs. patamar anterior',
   },
+  yield_daily: {
+    strategy: 'observations',
+    lookback: 1,
+    unit: 'percentage_points',
+    label: 'vs. pregão anterior',
+  },
   macro_monthly: {
     strategy: 'calendar-months',
     lookback: 12,
@@ -105,6 +117,12 @@ export const MEDIUM_TERM_POLICY: Readonly<Record<SeriesKind, VariationPolicy>> =
     lookback: 4,
     unit: 'percentage_points',
     label: 'vs. 4 patamares atrás',
+  },
+  yield_daily: {
+    strategy: 'observations',
+    lookback: 21,
+    unit: 'percentage_points',
+    label: 'vs. 21 pregões atrás',
   },
   macro_monthly: {
     strategy: 'calendar-months',
