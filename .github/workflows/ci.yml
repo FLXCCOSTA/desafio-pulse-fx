@@ -132,7 +132,10 @@ jobs:
       # Node e dependências empacotadas. Complementa o npm audit, que só enxerga
       # o que está no lockfile.
       - name: Scan de vulnerabilidades da imagem
-        uses: aquasecurity/trivy-action@0.36.0
+        # A tag leva o prefixo `v`. Sem ele a action não resolve, e o job falha
+        # antes de qualquer verificação acontecer — o pipeline fica vermelho por
+        # um motivo que nada tem a ver com a segurança da imagem.
+        uses: aquasecurity/trivy-action@v0.36.0
         with:
           image-ref: pulse-fx-api:ci
           format: table
