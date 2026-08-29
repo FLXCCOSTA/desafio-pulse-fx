@@ -1,0 +1,28 @@
+# dependências
+node_modules/
+.pnp.*
+
+# build
+dist/
+build/
+*.tsbuildinfo
+
+# ambiente — NUNCA versionar valores reais
+.env
+.env.*
+!.env.example
+
+# testes e cobertura
+coverage/
+.vitest/
+
+# editores e SO
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+
+# logs
+*.log
+npm-debug.log*

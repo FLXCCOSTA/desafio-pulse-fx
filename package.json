@@ -1,0 +1,31 @@
+{
+  "name": "pulse-fx",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Painel de câmbio e indicadores macro sobre fontes públicas (BCB e FRED).",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "lint": "eslint . --max-warnings=0",
+    "format": "prettier --check .",
+    "format:write": "prettier --write .",
+    "db:migrate": "node --experimental-strip-types db/migrate.ts",
+    "up": "docker compose up -d --build",
+    "down": "docker compose down"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.2",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.1",
+    "vitest": "^2.1.8"
+  }
+}
