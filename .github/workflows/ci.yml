@@ -103,10 +103,20 @@ jobs:
       - name: Auditoria de dependências
         run: npm audit --audit-level=moderate
 
+      # O gitleaks roda pela imagem oficial, e não pela action.
+      #
+      # A action monta o intervalo `<primeiro-commit>^..HEAD` — e o pai do
+      # commit inicial não existe. Toda primeira publicação de um repositório
+      # falha ali com "stderr is not empty", mesmo sem haver segredo algum.
+      # Foi exatamente o que aconteceu na primeira execução deste pipeline: o
+      # gitleaks reportou "no leaks found" e o job falhou assim mesmo.
+      #
+      # Varrendo pela imagem, o histórico inteiro é examinado e o código de
+      # saída só é diferente de zero quando há vazamento de verdade.
       - name: Varredura de segredos no histórico
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          docker run --rm -v "$PWD:/repo" zricethezav/gitleaks:latest \
+            detect --source=/repo --redact --no-banner --verbose
 
   # ─── Imagem de container ──────────────────────────────────────────
   imagem:
@@ -122,7 +132,7 @@ jobs:
       # Node e dependências empacotadas. Complementa o npm audit, que só enxerga
       # o que está no lockfile.
       - name: Scan de vulnerabilidades da imagem
-        uses: aquasecurity/trivy-action@0.28.0
+        uses: aquasecurity/trivy-action@0.36.0
         with:
           image-ref: pulse-fx-api:ci
           format: table
