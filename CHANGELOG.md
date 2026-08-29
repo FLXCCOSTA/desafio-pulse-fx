@@ -44,6 +44,24 @@ histórico de acompanhamento do projeto.
   administrativo ignora o TTL, mas não o circuit breaker: nem o operador deve
   martelar uma fonte fora do ar. Falha de uma série não interrompe as demais.
 
+- **API HTTP com Fastify 5**
+  Rotas de indicadores, detalhe com janela de histórico, favoritos e
+  sincronização administrativa. Health check devolve 503 quando o banco está
+  fora, para que um orquestrador tire a instância do balanceador.
+
+- **Sessão anônima para favoritos**
+  Identificador opaco gerado no servidor, em cookie `httpOnly` com `SameSite`
+  e prefixo `__Host-` em produção. Sem cadastro, e-mail ou rastreio — persiste
+  favoritos de verdade coletando o mínimo possível.
+
+- **Configuração validada no boot**
+  Schema Zod sobre as variáveis de ambiente. O processo morre imediatamente com
+  mensagem clara em vez de falhar de forma obscura na primeira requisição.
+
+- **Agendador de sincronização**
+  Intervalo configurável, com `unref()` para não segurar o processo, e
+  encerramento gracioso que fecha o servidor antes do pool de conexões.
+
 ### Corrigido
 
 - **Taxa de política comparava dias, não patamares** (`e70ad10`)
@@ -72,6 +90,27 @@ histórico de acompanhamento do projeto.
   Cinco achados do `npm audit`, um deles crítico, na cadeia
   `vitest 2.x → vite → esbuild`. Atualização para Vitest 4.1.11 sem alteração
   de código de teste. `npm audit` passa a reportar zero.
+
+- **Endurecimento da camada HTTP**
+  Helmet com CSP `default-src 'none'` (a API só devolve JSON), CORS por
+  allowlist explícita, rate limit global e um bem mais apertado no endpoint
+  administrativo — cada chamada dele dispara requisições às fontes externas, e
+  deixá-lo aberto transformaria a API num amplificador de tráfego contra o BCB
+  e o FRED.
+
+- **Token administrativo comparado em tempo constante**
+  Comparar segredo com `===` vaza informação por tempo de execução, porque a
+  igualdade de strings termina no primeiro caractere diferente. Token ausente e
+  token errado devolvem a mesma resposta.
+
+- **Cookie de sessão validado como UUID**
+  Sem essa checagem, conteúdo arbitrário enviado pelo cliente viraria chave de
+  consulta ao banco.
+
+- **Erros não vazam detalhe interno**
+  O cliente recebe código e mensagem genéricos com `requestId`; stack trace e
+  mensagem do driver ficam apenas no log. Cabeçalhos de cookie e de token são
+  removidos do log por redação explícita.
 
 - **Chave de API protegida desde o primeiro commit** (`a5de79f`)
   `.gitignore` cobre `.env` antes de o arquivo existir. A mensagem de erro de
