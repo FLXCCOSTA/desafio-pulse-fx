@@ -37,6 +37,8 @@ export const SESSION_COOKIE_DEVELOPMENT = 'pulsefx_session';
 export interface ServerDependencies {
   readonly indicators: IndicatorsService;
   readonly favorites: FavoritesRepository;
+  /** Checagem barata de existência no catálogo, sem carregar histórico. */
+  readonly seriesExists: (seriesId: string) => Promise<boolean>;
   readonly runSync: (trigger: SyncTrigger) => Promise<SyncResult[]>;
   readonly checkDatabase: () => Promise<boolean>;
   readonly config: {
@@ -45,6 +47,7 @@ export interface ServerDependencies {
     readonly adminSyncToken: string;
     readonly rateLimitMax: number;
     readonly rateLimitWindowMinutes: number;
+    readonly trustProxy: boolean | string;
   };
 }
 
@@ -83,7 +86,9 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
     },
     // Corpo de requisição pequeno: nenhuma rota recebe payload grande.
     bodyLimit: 16 * 1024,
-    trustProxy: isProduction,
+    // Nunca derivado de NODE_ENV: ver a nota em config.ts. Confiar em
+    // X-Forwarded-For sem proxy à frente anula o rate limit por completo.
+    trustProxy: deps.config.trustProxy,
   });
 
   await app.register(helmet, {
@@ -210,9 +215,10 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
     }
 
     // Só séries do catálogo entram: sem isso, a tabela viraria depósito de
-    // qualquer string enviada pelo cliente.
-    const detail = await deps.indicators.getIndicator(parsed.data.seriesId, '30d', []);
-    if (!detail) {
+    // qualquer string enviada pelo cliente. A checagem é uma consulta ao
+    // catálogo, e não o carregamento do detalhe — este último traria até 120
+    // observações e calcularia duas variações só para responder 'existe?'.
+    if (!(await deps.seriesExists(parsed.data.seriesId))) {
       return fail(reply, 404, 'indicator_not_found', 'Indicador não encontrado.');
     }
 

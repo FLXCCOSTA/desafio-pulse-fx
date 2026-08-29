@@ -39,6 +39,30 @@ const envSchema = z.object({
 
   RATE_LIMIT_MAX: z.coerce.number().int().positive().default(120),
   RATE_LIMIT_WINDOW_MINUTES: z.coerce.number().int().positive().default(1),
+
+  /**
+   * Confiar no cabeçalho `X-Forwarded-For` para determinar o IP do cliente.
+   *
+   * Padrão `false`, e deliberadamente **não** derivado de `NODE_ENV`. Confiar
+   * nesse cabeçalho sem um proxy confiável à frente permite que qualquer
+   * cliente forje o próprio IP: o rate limit passa a ser contado por um valor
+   * que o atacante escolhe, e portanto deixa de existir. Isso vale também para
+   * o endpoint administrativo, cujo limite apertado existe justamente para a
+   * API não virar amplificador de tráfego contra o BCB e o FRED.
+   *
+   * Só ative quando houver de fato um proxy reverso à frente que reescreva o
+   * cabeçalho. O ideal é informar o endereço ou faixa do proxy em vez de
+   * `true`, para que apenas ele seja considerado confiável.
+   */
+  TRUST_PROXY: z
+    .string()
+    .default('false')
+    .transform((value) => {
+      if (value === 'false' || value === '') return false;
+      if (value === 'true') return true;
+      // Endereço ou faixa CIDR do proxy confiável.
+      return value;
+    }),
 });
 
 export type AppConfig = Readonly<{
@@ -54,6 +78,7 @@ export type AppConfig = Readonly<{
   syncIntervalMinutes: number;
   rateLimitMax: number;
   rateLimitWindowMinutes: number;
+  trustProxy: boolean | string;
 }>;
 
 export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -86,5 +111,6 @@ export function loadConfig(source: NodeJS.ProcessEnv = process.env): AppConfig {
     syncIntervalMinutes: env.SYNC_INTERVAL_MINUTES,
     rateLimitMax: env.RATE_LIMIT_MAX,
     rateLimitWindowMinutes: env.RATE_LIMIT_WINDOW_MINUTES,
+    trustProxy: env.TRUST_PROXY,
   };
 }

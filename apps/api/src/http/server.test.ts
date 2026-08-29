@@ -80,6 +80,7 @@ function makeDeps(overrides: Partial<ServerDependencies> = {}): ServerDependenci
   return {
     indicators,
     favorites,
+    seriesExists: async (seriesId: string) => seriesId === 'usd-brl',
     runSync: async () => [{ seriesId: 'usd-brl', outcome: 'success', rowsUpserted: 2 }],
     checkDatabase: async () => true,
     config: {
@@ -88,6 +89,7 @@ function makeDeps(overrides: Partial<ServerDependencies> = {}): ServerDependenci
       adminSyncToken: ADMIN_TOKEN,
       rateLimitMax: 1000,
       rateLimitWindowMinutes: 1,
+      trustProxy: false,
     },
     ...overrides,
   };

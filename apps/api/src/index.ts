@@ -99,6 +99,7 @@ async function main(): Promise<void> {
   const app = await buildServer({
     indicators: new IndicatorsService(seriesRepository, observationsRepository),
     favorites: favoritesRepository,
+    seriesExists: async (seriesId) => (await seriesRepository.findById(seriesId)) !== null,
     runSync,
     checkDatabase: async () => {
       try {

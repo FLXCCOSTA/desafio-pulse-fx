@@ -42,9 +42,11 @@ describe('parser do SGS (BCB)', () => {
     expect(observations[0]?.value).toBe(5.1053);
   });
 
-  it('devolve lista vazia quando a fonte responde algo que não é array', () => {
-    // O SGS devolve HTML de erro em caminho inválido: não pode virar exceção
-    // não tratada no meio do job de sincronização.
+  it('devolve lista vazia quando recebe algo que não é array', () => {
+    // Defesa de última linha do parser. Vale registrar que, no caminho real, o
+    // HTML de erro do SGS nem chega aqui: o cliente HTTP falha antes, ao tentar
+    // interpretar a resposta como JSON, e classifica como `invalid_payload` —
+    // ver o bloco "HttpClient · resposta que não é JSON" no fim deste arquivo.
     expect(parseSgsResponse('<html>Requisição inválida!</html>')).toEqual([]);
     expect(parseSgsResponse(null)).toEqual([]);
   });
@@ -135,5 +137,73 @@ describe('HttpClient · defesas contra SSRF', () => {
 
   it('recusa URL malformada', () => {
     expect(() => client.assertAllowed('nao-e-uma-url')).toThrow(HttpClientError);
+  });
+});
+
+describe('HttpClient · resposta que não é JSON', () => {
+  /**
+   * Regressão de defeito encontrado em revisão: o SGS devolve uma página HTML
+   * de "Requisição inválida" com status 200 quando o caminho não bate. Antes,
+   * o erro de parsing caía no catch genérico, era rotulado como falha de rede
+   * e **retentado três vezes** — com o timeout de 25s do BCB, mais de um minuto
+   * gasto numa resposta que nunca melhoraria.
+   */
+  function clientWithBody(body: string, maxAttempts = 3) {
+    const calls = { count: 0 };
+    const originalFetch = globalThis.fetch;
+
+    globalThis.fetch = async () => {
+      calls.count += 1;
+      return new Response(body, { status: 200, headers: { 'content-type': 'text/html' } });
+    };
+
+    const client = new HttpClient({
+      allowedHosts: [BCB_HOST],
+      timeoutMs: 1_000,
+      maxAttempts,
+      maxResponseBytes: 4096,
+      sleep: async () => undefined,
+      random: () => 0,
+    });
+
+    return { client, calls, restore: () => (globalThis.fetch = originalFetch) };
+  }
+
+  it('classifica HTML como payload inválido, não como falha de rede', async () => {
+    const { client, restore } = clientWithBody('<html>Requisição inválida!</html>');
+
+    try {
+      await expect(client.getJson('https://api.bcb.gov.br/x')).rejects.toMatchObject({
+        name: 'HttpClientError',
+        kind: 'invalid_payload',
+      });
+    } finally {
+      restore();
+    }
+  });
+
+  it('não retenta resposta malformada: repetir não muda o resultado', async () => {
+    const { client, calls, restore } = clientWithBody('<html>Requisição inválida!</html>');
+
+    try {
+      await expect(client.getJson('https://api.bcb.gov.br/x')).rejects.toThrow();
+      expect(calls.count).toBe(1);
+    } finally {
+      restore();
+    }
+  });
+
+  it('a mensagem de erro não vaza a URL, que no FRED contém a chave', async () => {
+    const { client, restore } = clientWithBody('nao e json');
+
+    try {
+      await client.getJson('https://api.bcb.gov.br/x?api_key=segredo-nao-pode-vazar');
+      expect.unreachable('deveria ter lançado');
+    } catch (error) {
+      expect((error as Error).message).not.toContain('segredo-nao-pode-vazar');
+      expect((error as Error).message).not.toContain('api_key');
+    } finally {
+      restore();
+    }
   });
 });

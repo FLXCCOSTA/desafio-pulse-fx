@@ -21,7 +21,14 @@ export class HttpClientError extends Error {
   constructor(
     message: string,
     readonly kind:
-      'blocked_host' | 'timeout' | 'http_status' | 'too_large' | 'network' | 'redirect',
+      | 'blocked_host'
+      | 'timeout'
+      | 'http_status'
+      | 'too_large'
+      | 'network'
+      | 'redirect'
+      /** Resposta chegou, mas não é JSON. Não adianta retentar. */
+      | 'invalid_payload',
     readonly status?: number,
   ) {
     super(message);
@@ -168,7 +175,19 @@ export class HttpClient {
         );
       }
 
-      return JSON.parse(text) as T;
+      try {
+        return JSON.parse(text) as T;
+      } catch {
+        // O SGS devolve uma página HTML de "Requisição inválida" quando o
+        // caminho não bate — com status 200. Sem esta distinção, o erro de
+        // parsing cairia no catch genérico abaixo, seria rotulado como falha
+        // de rede e, pior, **retentado três vezes**: com o timeout de 25s do
+        // BCB, mais de um minuto gasto numa resposta que nunca vai melhorar.
+        throw new HttpClientError(
+          `Resposta de ${target.hostname} não é JSON válido`,
+          'invalid_payload',
+        );
+      }
     } catch (error) {
       if (error instanceof HttpClientError) throw error;
 

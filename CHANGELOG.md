@@ -104,6 +104,18 @@ histórico de acompanhamento do projeto.
 
 ### Corrigido
 
+- **Resposta malformada tratada como falha de rede** (revisão de código)
+  O SGS devolve HTML de erro com status 200. O `JSON.parse` falhava, caía no
+  tratamento genérico e o erro era rotulado como falha de rede — e portanto
+  **retentado três vezes**, gastando mais de um minuto com o timeout de 25 s do
+  BCB numa resposta que nunca melhoraria. Nova classificação `invalid_payload`,
+  não retentável.
+
+- **Validação de favorito carregava o detalhe completo** (revisão de código)
+  Para responder "esta série existe?", a rota montava o detalhe inteiro: até 120
+  observações lidas e duas variações calculadas. Passa a consultar apenas o
+  catálogo.
+
 - **`setState` síncrono dentro de efeito no frontend** (`4764def`)
   Presente nas duas páginas, causava renderização em cascata. A correção não foi
   silenciar a regra: o estado de carregamento passou a ser **derivado** de um
@@ -142,6 +154,15 @@ histórico de acompanhamento do projeto.
   com validação de finitude.
 
 ### Segurança
+
+- **Rate limit contornável por cabeçalho forjado** (revisão de código)
+  `trustProxy` era derivado de `NODE_ENV`, então o container de produção
+  confiava em `X-Forwarded-For` sem proxy à frente. Como o limite é contado por
+  `request.ip`, qualquer cliente o contornava rotacionando o cabeçalho —
+  inclusive no endpoint administrativo, cuja proteção existe para a API não
+  virar amplificador de tráfego contra o BCB e o FRED. Passa a ser controlado
+  pela variável `TRUST_PROXY`, `false` por padrão, que aceita faixa CIDR do
+  proxy confiável em vez de um `true` genérico.
 
 - **Vulnerabilidades de dependência zeradas** (`8bcdd97`)
   Cinco achados do `npm audit`, um deles crítico, na cadeia

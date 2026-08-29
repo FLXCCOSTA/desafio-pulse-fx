@@ -100,7 +100,7 @@ valores**. O `.env` real nunca entra no Git nem na imagem Docker.
 | `POSTGRES_PASSWORD` | ✔ | — | Senha do banco |
 | `POSTGRES_DB` | | `pulsefx` | Nome do banco |
 | `DATABASE_URL` | ✔ | — | Cadeia de conexão (o Compose monta sozinho) |
-| `NODE_ENV` | | `development` | Ativa cookie `__Host-` e `trustProxy` em `production` |
+| `NODE_ENV` | | `development` | Em `production`, ativa o prefixo `__Host-` e o atributo `Secure` no cookie de sessão |
 | `PORT` | | `3333` | Porta da API |
 | `CORS_ORIGINS` | | `http://localhost:5173` | Allowlist de origens, separadas por vírgula |
 | `ADMIN_SYNC_TOKEN` | ✔ | — | Token do endpoint de sync. Mínimo de 32 caracteres |
@@ -111,6 +111,7 @@ valores**. O `.env` real nunca entra no Git nem na imagem Docker.
 | `SYNC_INTERVAL_MINUTES` | | `120` | Intervalo do agendador |
 | `RATE_LIMIT_MAX` | | `120` | Requisições por janela, por IP |
 | `RATE_LIMIT_WINDOW_MINUTES` | | `1` | Tamanho da janela do rate limit |
+| `TRUST_PROXY` | | `false` | Confiar em `X-Forwarded-For`. Só ative com proxy confiável à frente |
 
 A configuração é validada por schema Zod **no boot**. Se algo faltar ou estiver
 malformado, o processo morre imediatamente listando o que está errado — sem
@@ -464,7 +465,13 @@ O cliente HTTP (`apps/api/src/infra/http/httpClient.ts`):
 - token ausente e token errado devolvem a mesma resposta, sem confirmar sequer
   a existência do header;
 - erro interno devolve código genérico com `requestId`; stack trace e mensagem
-  do driver ficam apenas no log, com cookie e token redigidos.
+  do driver ficam apenas no log, com cookie e token redigidos;
+- **`TRUST_PROXY` é `false` por padrão e não é derivado de `NODE_ENV`.** Confiar
+  em `X-Forwarded-For` sem um proxy confiável à frente permite que qualquer
+  cliente forje o próprio IP — e, como o rate limit é contado por IP, ele deixa
+  de existir. Esta foi uma vulnerabilidade real encontrada na revisão do código
+  e corrigida: veja a seção de correções no
+  [CHANGELOG](CHANGELOG.md).
 
 ### Sessão e privacidade
 

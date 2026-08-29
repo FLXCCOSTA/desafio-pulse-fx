@@ -11,7 +11,9 @@
  * Duas armadilhas verificadas na prática:
  *
  * 1. O caminho `/dados/ultimos/N` devolve uma página HTML de "Requisição
- *    inválida", não JSON. Só o intervalo de datas funciona.
+ *    inválida" — com status 200 —, não JSON. Só o intervalo de datas funciona.
+ *    O cliente HTTP detecta isso ao tentar interpretar a resposta e classifica
+ *    como `invalid_payload`, sem retentar.
  * 2. As datas vão e voltam em `dd/MM/yyyy`, não em ISO. Converter na fronteira
  *    e nunca deixar esse formato vazar para o domínio.
  */

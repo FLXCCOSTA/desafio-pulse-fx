@@ -62,3 +62,29 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ ...valid, PORT: 'oitenta' })).toThrow(/PORT/);
   });
 });
+
+describe('loadConfig · trustProxy', () => {
+  /**
+   * Regressão de vulnerabilidade encontrada em revisão: `trustProxy` era
+   * derivado de `NODE_ENV`, então o container de produção confiava em
+   * `X-Forwarded-For` sem proxy à frente. Como o rate limit é contado por
+   * `request.ip`, qualquer cliente contornava o limite rotacionando o
+   * cabeçalho — inclusive no endpoint administrativo, cujo limite existe para
+   * a API não virar amplificador de tráfego contra o BCB e o FRED.
+   */
+  it('não confia em proxy por padrão', () => {
+    expect(loadConfig(valid).trustProxy).toBe(false);
+  });
+
+  it('não passa a confiar só porque o ambiente é produção', () => {
+    expect(loadConfig({ ...valid, NODE_ENV: 'production' }).trustProxy).toBe(false);
+  });
+
+  it('aceita ativação explícita', () => {
+    expect(loadConfig({ ...valid, TRUST_PROXY: 'true' }).trustProxy).toBe(true);
+  });
+
+  it('aceita faixa CIDR, que é mais seguro que confiar em qualquer origem', () => {
+    expect(loadConfig({ ...valid, TRUST_PROXY: '10.0.0.0/8' }).trustProxy).toBe('10.0.0.0/8');
+  });
+});
