@@ -31,10 +31,7 @@ export function VariationBadge({ variation }: { variation: Variation }): React.J
       {/* Seta decorativa: a informação está no sinal e no texto abaixo. */}
       {direction !== 'flat' && (
         <svg width="10" height="10" viewBox="0 0 10 10" aria-hidden="true" focusable="false">
-          <path
-            d={direction === 'up' ? 'M5 1L9 8H1z' : 'M5 9L1 2h8z'}
-            fill="currentColor"
-          />
+          <path d={direction === 'up' ? 'M5 1L9 8H1z' : 'M5 9L1 2h8z'} fill="currentColor" />
         </svg>
       )}
       <span aria-hidden="true">{formatVariation(variation)}</span>

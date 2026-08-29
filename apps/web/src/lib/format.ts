@@ -42,8 +42,18 @@ export function formatMonth(isoDate: string | null): string {
 
   const [year, month] = isoDate.split('-');
   const nomes = [
-    'janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-    'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro',
+    'janeiro',
+    'fevereiro',
+    'março',
+    'abril',
+    'maio',
+    'junho',
+    'julho',
+    'agosto',
+    'setembro',
+    'outubro',
+    'novembro',
+    'dezembro',
   ];
 
   return `${nomes[Number(month) - 1] ?? month} de ${year}`;
@@ -103,7 +113,8 @@ export function variationUnavailableText(variation: Variation): string {
 export function variationAriaLabel(variation: Variation): string {
   if (variation.change === null) return variationUnavailableText(variation);
 
-  const direction = variation.change > 0 ? 'alta de' : variation.change < 0 ? 'queda de' : 'estável em';
+  const direction =
+    variation.change > 0 ? 'alta de' : variation.change < 0 ? 'queda de' : 'estável em';
   const magnitude = formatVariation(variation).replace(/^[+−]/, '');
 
   return `${direction} ${magnitude} ${variation.label}`;

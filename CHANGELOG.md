@@ -82,6 +82,29 @@ histórico de acompanhamento do projeto.
   Intervalo configurável, com `unref()` para não segurar o processo, e
   encerramento gracioso que fecha o servidor antes do pool de conexões.
 
+- **Pipeline de CI com gates de segurança**
+  Jobs paralelos que falham por motivos distintos: qualidade estática, testes,
+  segurança, imagem e subida do ambiente. Inclui Unknown command: "audit"
+
+
+Did you mean this?
+  npm audit # Run a security audit
+To see a list of supported npm commands, run:
+  npm help a partir de
+  severidade moderada, varredura de segredos no histórico completo, scan de
+  imagem com Trivy, e verificação de que a imagem não roda como root nem
+  carrega . O job de Compose valida a promessa dos 15 minutos a cada
+  mudança, em vez de confiar que o README continua verdadeiro.
+
+- **ESLint e Prettier configurados**
+  Regras com informação de tipo (), que pegam promise
+  não aguardada em rota e  vazando de resposta externa.
+
+- **README raiz**
+  Subida do ambiente, variáveis, séries escolhidas com justificativa, regra de
+  variação, política de sincronização, arquitetura, segurança, acessibilidade,
+  trade-offs e limitações conhecidas.
+
 ### Corrigido
 
 - **Taxa de política comparava dias, não patamares** (`e70ad10`)

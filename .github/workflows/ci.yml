@@ -1,0 +1,196 @@
+# Pipeline de integração contínua do Pulse FX.
+#
+# Organizado em jobs paralelos que falham cedo e por motivos distintos, em vez
+# de um job monolítico: quando o pipeline vermelho diz "qualidade" ou
+# "segurança" antes mesmo de abrir o log, o diagnóstico começa mais rápido.
+#
+# Os gates de segurança não são decorativos — cada um já pegou algo real neste
+# projeto ou pegaria: o audit acusou uma vulnerabilidade crítica em dependência
+# de desenvolvimento, e a varredura de segredos existe porque a chave do FRED
+# circula neste repositório em .env local.
+
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Permite rodar sob demanda pela interface do GitHub.
+  workflow_dispatch:
+
+# Não deixa dois pipelines da mesma branch competirem por runner.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+# Princípio do menor privilégio: o token do job só lê o repositório.
+permissions:
+  contents: read
+
+env:
+  NODE_VERSION: '22'
+
+jobs:
+  # ─── Qualidade estática ───────────────────────────────────────────
+  qualidade:
+    name: Lint, tipos e formatação
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      # npm ci respeita o lockfile exatamente. Build reprodutível é o que
+      # permite auditar o que de fato foi para produção.
+      - run: npm ci
+
+      - name: ESLint
+        run: npm run lint
+
+      - name: Verificação de tipos
+        run: npm run typecheck
+
+      - name: Formatação
+        run: npm run format
+
+  # ─── Testes ───────────────────────────────────────────────────────
+  testes:
+    name: Testes automatizados
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # O teste de persistência sobe um Postgres real via Testcontainers.
+      # O runner do GitHub já traz Docker, então nada precisa ser instalado —
+      # e o teste roda contra o mesmo banco que o Compose usa, não contra um
+      # dublê que só provaria que escrevemos a string SQL que imaginamos.
+      - name: Suíte completa
+        run: npm test
+
+      - name: Build do frontend
+        run: npm run build --workspace @pulse-fx/web
+
+  # ─── Segurança ────────────────────────────────────────────────────
+  seguranca:
+    name: Gates de segurança
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # A varredura de segredos precisa do histórico completo: um segredo
+          # removido no último commit continua recuperável nos anteriores.
+          fetch-depth: 0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+
+      # Falha em qualquer severidade moderada ou acima. O padrão do npm é
+      # 'low', que na prática transforma o gate em ruído e ensina a ignorá-lo.
+      - name: Auditoria de dependências
+        run: npm audit --audit-level=moderate
+
+      - name: Varredura de segredos no histórico
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ─── Imagem de container ──────────────────────────────────────────
+  imagem:
+    name: Build e scan da imagem
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Construir a imagem da API
+        run: docker build -f apps/api/Dockerfile -t pulse-fx-api:ci .
+
+      # Trivy examina o sistema de arquivos da imagem: pacotes do Alpine, do
+      # Node e dependências empacotadas. Complementa o npm audit, que só enxerga
+      # o que está no lockfile.
+      - name: Scan de vulnerabilidades da imagem
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: pulse-fx-api:ci
+          format: table
+          exit-code: '1'
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+
+      # Verificação explícita de uma exigência do CIS Docker Benchmark que é
+      # fácil de perder numa refatoração do Dockerfile.
+      - name: A imagem roda como usuário sem privilégio?
+        run: |
+          user=$(docker inspect -f '{{.Config.User}}' pulse-fx-api:ci)
+          echo "Usuário configurado na imagem: '${user}'"
+          if [ -z "$user" ] || [ "$user" = "root" ] || [ "$user" = "0" ]; then
+            echo "::error::A imagem executaria como root."
+            exit 1
+          fi
+
+      # A imagem não pode carregar segredo em camada. O .dockerignore exclui o
+      # .env, mas um COPY distraído no futuro anularia isso em silêncio.
+      - name: A imagem contém arquivo .env?
+        run: |
+          if docker run --rm --entrypoint sh pulse-fx-api:ci -c 'ls -a / /app 2>/dev/null' | grep -qx '.env'; then
+            echo "::error::Arquivo .env encontrado dentro da imagem."
+            exit 1
+          fi
+          echo "Nenhum .env na imagem."
+
+  # ─── Ambiente completo ────────────────────────────────────────────
+  # O briefing exige que o ambiente suba em menos de 15 minutos numa máquina
+  # com Docker. Este job verifica essa promessa a cada mudança, em vez de
+  # confiar que o README continua verdadeiro.
+  compose:
+    name: Ambiente sobe pelo Compose
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Preparar variáveis de ambiente
+        run: |
+          cp .env.example .env
+          {
+            echo "POSTGRES_PASSWORD=ci-$(openssl rand -hex 16)"
+            echo "ADMIN_SYNC_TOKEN=$(openssl rand -hex 32)"
+            # A chave real não existe no CI. A API sobe e serve o que estiver
+            # persistido; a sincronização com o FRED falha e fica registrada em
+            # sync_runs, que é justamente o comportamento resiliente esperado.
+            echo "FRED_API_KEY=chave-ausente-no-ci"
+            echo "SYNC_ON_STARTUP=false"
+          } >> .env
+
+      - name: Subir o ambiente
+        run: docker compose up -d --build --wait --wait-timeout 300
+
+      - name: A API responde saudável?
+        run: |
+          status=$(curl -fsS http://localhost:3333/health | tee /dev/stderr)
+          echo "$status" | grep -q '"status":"ok"'
+
+      - name: As migrations criaram o catálogo?
+        run: |
+          docker compose exec -T postgres \
+            psql -U pulsefx -d pulsefx -tAc 'SELECT count(*) FROM series' | grep -qx '7'
+
+      - name: Logs em caso de falha
+        if: failure()
+        run: docker compose logs --no-color
+
+      - name: Derrubar o ambiente
+        if: always()
+        run: docker compose down -v

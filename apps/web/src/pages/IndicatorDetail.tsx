@@ -14,39 +14,65 @@ const WINDOWS: ReadonlyArray<{ value: HistoryWindow; label: string }> = [
   { value: '5y', label: '5 anos' },
 ];
 
+/**
+ * Resultado carimbado com a chave da requisição que o produziu.
+ *
+ * Como no dashboard, o carimbo permite derivar o estado de carregamento em vez
+ * de mantê-lo em variável separada. Aqui a chave combina indicador e janela:
+ * trocar qualquer um dos dois já marca o resultado atual como obsoleto, e a
+ * interface volta ao esqueleto sem `setState` síncrono dentro do efeito.
+ */
+interface LoadResult {
+  readonly key: string;
+  readonly detail?: Detail;
+  readonly errorMessage?: string;
+}
+
 export function IndicatorDetail(): React.JSX.Element {
   const { id = '' } = useParams<{ id: string }>();
   const [window, setWindow] = useState<HistoryWindow>('90d');
-  const [detail, setDetail] = useState<Detail | null>(null);
-  const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [result, setResult] = useState<LoadResult | null>(null);
+
+  const key = `${id}|${window}`;
 
   useEffect(() => {
     const controller = new AbortController();
-    setState('loading');
 
     api
       .getIndicator(id, window, controller.signal)
-      .then((data) => {
-        setDetail(data);
-        setState('ready');
+      .then((detail) => {
+        setResult({ key, detail });
       })
       .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        setErrorMessage(error instanceof ApiError ? error.message : 'Falha inesperada.');
-        setState('error');
+        setResult({
+          key,
+          errorMessage: error instanceof ApiError ? error.message : 'Falha inesperada.',
+        });
       });
 
     return () => {
       controller.abort();
     };
-  }, [id, window]);
+  }, [id, window, key]);
 
-  if (state === 'error') {
+  const loading = result?.key !== key;
+
+  if (loading) {
+    return (
+      <div aria-busy="true" aria-label="Carregando indicador">
+        <div className="skeleton" style={{ height: 34, width: '45%', marginBottom: 14 }} />
+        <div className="skeleton" style={{ height: 56, width: '30%', marginBottom: 22 }} />
+        <div className="skeleton" style={{ height: 240 }} />
+      </div>
+    );
+  }
+
+  if (result.errorMessage !== undefined || !result.detail) {
     return (
       <div className="state" role="alert">
         <h2>Não foi possível carregar este indicador</h2>
-        <p>{errorMessage}</p>
+        <p>{result.errorMessage ?? 'Indicador não encontrado.'}</p>
         <p style={{ marginTop: 18 }}>
           <Link className="button" to="/">
             Voltar ao painel
@@ -56,15 +82,7 @@ export function IndicatorDetail(): React.JSX.Element {
     );
   }
 
-  if (state === 'loading' || !detail) {
-    return (
-      <div aria-busy="true" aria-label="Carregando indicador">
-        <div className="skeleton" style={{ height: 34, width: '45%', marginBottom: 14 }} />
-        <div className="skeleton" style={{ height: 56, width: '30%', marginBottom: 22 }} />
-        <div className="skeleton" style={{ height: 240 }} />
-      </div>
-    );
-  }
+  const detail = result.detail;
 
   const referenceLabel =
     detail.frequency === 'monthly'
@@ -154,8 +172,8 @@ export function IndicatorDetail(): React.JSX.Element {
           {detail.variation.baselineDate
             ? `, tomando como base a observação de ${formatDate(detail.variation.baselineDate)}.`
             : '.'}{' '}
-          Lacunas de calendário — fim de semana, feriado ou atraso de publicação — são
-          resolvidas pelo último dado conhecido, sem interpolação.
+          Lacunas de calendário — fim de semana, feriado ou atraso de publicação — são resolvidas
+          pelo último dado conhecido, sem interpolação.
         </p>
         <p>
           <a href={detail.docUrl} target="_blank" rel="noreferrer noopener">

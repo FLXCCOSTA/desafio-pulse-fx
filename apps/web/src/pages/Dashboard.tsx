@@ -4,71 +4,100 @@ import { useCallback, useEffect, useState } from 'react';
 import { IndicatorCard } from '../components/IndicatorCard';
 import { ApiError, api } from '../lib/api';
 
-type LoadState = 'loading' | 'ready' | 'error';
+/**
+ * Resultado de uma tentativa de carga, carimbado com o número da tentativa.
+ *
+ * O carimbo é o que permite **derivar** o estado de carregamento em vez de
+ * mantê-lo numa variável própria: se o resultado guardado não corresponde à
+ * tentativa atual, ainda estamos carregando. Sem isso, seria preciso chamar
+ * `setState('loading')` dentro do efeito, o que dispara renderização em cascata
+ * e mantém duas fontes de verdade que podem divergir.
+ */
+interface LoadResult {
+  readonly attempt: number;
+  readonly indicators?: IndicatorSummary[];
+  readonly errorMessage?: string;
+}
 
 export function Dashboard(): React.JSX.Element {
-  const [indicators, setIndicators] = useState<IndicatorSummary[]>([]);
-  const [state, setState] = useState<LoadState>('loading');
-  const [errorMessage, setErrorMessage] = useState('');
+  const [attempt, setAttempt] = useState(0);
+  const [result, setResult] = useState<LoadResult | null>(null);
   const [pendingId, setPendingId] = useState<string | null>(null);
-
-  const load = useCallback((signal?: AbortSignal) => {
-    setState('loading');
-
-    api
-      .listIndicators(signal)
-      .then((data) => {
-        setIndicators(data);
-        setState('ready');
-      })
-      .catch((error: unknown) => {
-        if (signal?.aborted) return;
-        setErrorMessage(error instanceof ApiError ? error.message : 'Falha inesperada.');
-        setState('error');
-      });
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
-    load(controller.signal);
+
+    api
+      .listIndicators(controller.signal)
+      .then((indicators) => {
+        setResult({ attempt, indicators });
+      })
+      .catch((error: unknown) => {
+        if (controller.signal.aborted) return;
+        setResult({
+          attempt,
+          errorMessage: error instanceof ApiError ? error.message : 'Falha inesperada.',
+        });
+      });
+
     return () => {
       controller.abort();
     };
-  }, [load]);
+  }, [attempt]);
 
   /**
    * Alterna o favorito de forma otimista, revertendo se o servidor recusar.
    *
-   * O estado real continua sendo o do servidor: a atualização otimista é
-   * apenas para que o clique pareça instantâneo. Sem a reversão, um erro de
-   * rede deixaria a interface mentindo sobre o que foi persistido.
+   * O estado real continua sendo o do servidor: a atualização otimista existe
+   * só para que o clique pareça instantâneo. Sem a reversão, um erro de rede
+   * deixaria a interface mentindo sobre o que foi persistido.
    */
   const toggleFavorite = useCallback((seriesId: string, next: boolean) => {
+    const applyFavorite = (id: string, value: boolean) => {
+      setResult((current) =>
+        current?.indicators
+          ? {
+              ...current,
+              indicators: current.indicators.map((item) =>
+                item.id === id ? { ...item, isFavorite: value } : item,
+              ),
+            }
+          : current,
+      );
+    };
+
     setPendingId(seriesId);
-    setIndicators((current) =>
-      current.map((item) => (item.id === seriesId ? { ...item, isFavorite: next } : item)),
-    );
+    applyFavorite(seriesId, next);
 
     const action = next ? api.addFavorite(seriesId) : api.removeFavorite(seriesId);
 
     action
       .then(({ seriesIds }) => {
         const favorites = new Set(seriesIds);
-        setIndicators((current) =>
-          current.map((item) => ({ ...item, isFavorite: favorites.has(item.id) })),
+        setResult((current) =>
+          current?.indicators
+            ? {
+                ...current,
+                indicators: current.indicators.map((item) => ({
+                  ...item,
+                  isFavorite: favorites.has(item.id),
+                })),
+              }
+            : current,
         );
       })
       .catch(() => {
-        setIndicators((current) =>
-          current.map((item) => (item.id === seriesId ? { ...item, isFavorite: !next } : item)),
-        );
+        applyFavorite(seriesId, !next);
       })
       .finally(() => {
         setPendingId(null);
       });
   }, []);
 
-  if (state === 'loading') {
+  // Estado derivado: o resultado guardado ainda não é o desta tentativa.
+  const loading = result?.attempt !== attempt;
+
+  if (loading) {
     return (
       <ul className="grid" aria-busy="true" aria-label="Carregando indicadores">
         {Array.from({ length: 7 }, (_, index) => (
@@ -82,13 +111,19 @@ export function Dashboard(): React.JSX.Element {
     );
   }
 
-  if (state === 'error') {
+  if (result.errorMessage !== undefined) {
     return (
       <div className="state" role="alert">
         <h2>Não foi possível carregar os indicadores</h2>
-        <p>{errorMessage}</p>
+        <p>{result.errorMessage}</p>
         <p style={{ marginTop: 18 }}>
-          <button type="button" className="button" onClick={() => load()}>
+          <button
+            type="button"
+            className="button"
+            onClick={() => {
+              setAttempt((value) => value + 1);
+            }}
+          >
             Tentar de novo
           </button>
         </p>
@@ -96,13 +131,15 @@ export function Dashboard(): React.JSX.Element {
     );
   }
 
+  const indicators = result.indicators ?? [];
+
   if (indicators.length === 0) {
     return (
       <div className="state">
         <h2>Nenhum indicador disponível</h2>
         <p>
-          O catálogo está vazio ou a primeira sincronização ainda não terminou. Atualize a
-          página em alguns instantes.
+          O catálogo está vazio ou a primeira sincronização ainda não terminou. Atualize a página em
+          alguns instantes.
         </p>
       </div>
     );

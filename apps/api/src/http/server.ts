@@ -150,7 +150,12 @@ export async function buildServer(deps: ServerDependencies): Promise<FastifyInst
   const sessionOf = (request: FastifyRequest): string =>
     (request as FastifyRequest & { sessionId: string }).sessionId;
 
-  const fail = (reply: FastifyReply, status: number, code: string, message: string): FastifyReply => {
+  const fail = (
+    reply: FastifyReply,
+    status: number,
+    code: string,
+    message: string,
+  ): FastifyReply => {
     const body: ErrorResponse = { code, message, requestId: reply.request.id };
     return reply.status(status).send(body);
   };

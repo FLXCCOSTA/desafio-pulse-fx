@@ -30,7 +30,10 @@ describe('calculateVariation · câmbio diário', () => {
 
   it('ignora feriado sem publicação, usando o último dado conhecido', () => {
     // 07/09 é feriado nacional: a série simplesmente não tem o dia.
-    const result = calculateVariation([obs('2026-09-04', 5.0), obs('2026-09-08', 5.25)], 'fx_daily');
+    const result = calculateVariation(
+      [obs('2026-09-04', 5.0), obs('2026-09-08', 5.25)],
+      'fx_daily',
+    );
 
     expect(result.baseline?.referenceDate).toBe('2026-09-04');
     expect(result.change).toBeCloseTo(5, 10);
@@ -61,7 +64,10 @@ describe('calculateVariation · câmbio diário', () => {
 describe('calculateVariation · taxa de política monetária', () => {
   it('usa pontos percentuais, não variação percentual', () => {
     // Selic de 10% para 11% é +1 p.p. Reportar "+10%" seria enganoso.
-    const result = calculateVariation([obs('2026-06-18', 10), obs('2026-08-06', 11)], 'policy_rate');
+    const result = calculateVariation(
+      [obs('2026-06-18', 10), obs('2026-08-06', 11)],
+      'policy_rate',
+    );
 
     expect(result.unit).toBe('percentage_points');
     expect(result.change).toBeCloseTo(1, 10);
@@ -77,7 +83,10 @@ describe('calculateVariation · taxa de política monetária', () => {
   });
 
   it('não trata base zero como erro, porque a subtração é definida', () => {
-    const result = calculateVariation([obs('2026-01-01', 0), obs('2026-02-01', 0.5)], 'policy_rate');
+    const result = calculateVariation(
+      [obs('2026-01-01', 0), obs('2026-02-01', 0.5)],
+      'policy_rate',
+    );
 
     expect(result.change).toBeCloseTo(0.5, 10);
     expect(result.unavailableReason).toBeNull();
@@ -167,7 +176,10 @@ describe('calculateVariation · macro mensal', () => {
   });
 
   it('sinaliza base zero em série percentual', () => {
-    const result = calculateVariation([obs('2025-05-01', 0), obs('2026-05-01', 3)], 'macro_monthly_index');
+    const result = calculateVariation(
+      [obs('2025-05-01', 0), obs('2026-05-01', 3)],
+      'macro_monthly_index',
+    );
 
     expect(result.change).toBeNull();
     expect(result.unavailableReason).toBe('zero_baseline');

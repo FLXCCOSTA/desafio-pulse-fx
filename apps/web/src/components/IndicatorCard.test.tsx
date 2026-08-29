@@ -167,7 +167,9 @@ describe('IndicatorCard · favorito', () => {
     renderCard({ isFavorite: false });
 
     expect(
-      screen.getByRole('button', { name: /adicionar dólar americano \(venda\) aos meus indicadores/i }),
+      screen.getByRole('button', {
+        name: /adicionar dólar americano \(venda\) aos meus indicadores/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -175,7 +177,9 @@ describe('IndicatorCard · favorito', () => {
     renderCard({ isFavorite: true });
 
     expect(
-      screen.getByRole('button', { name: /remover dólar americano \(venda\) dos meus indicadores/i }),
+      screen.getByRole('button', {
+        name: /remover dólar americano \(venda\) dos meus indicadores/i,
+      }),
     ).toBeInTheDocument();
   });
 
@@ -242,7 +246,12 @@ describe('formatação', () => {
   });
 
   it('sempre inclui o sinal, que é o que comunica a direção sem cor', () => {
-    const percent = { unit: 'percent' as const, label: '', baselineDate: null, unavailableReason: null };
+    const percent = {
+      unit: 'percent' as const,
+      label: '',
+      baselineDate: null,
+      unavailableReason: null,
+    };
 
     expect(formatVariation({ ...percent, change: 1.5 })).toMatch(/^\+/);
     expect(formatVariation({ ...percent, change: -1.5 })).toMatch(/^−/);

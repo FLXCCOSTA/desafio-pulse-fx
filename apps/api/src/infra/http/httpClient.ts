@@ -20,7 +20,8 @@
 export class HttpClientError extends Error {
   constructor(
     message: string,
-    readonly kind: 'blocked_host' | 'timeout' | 'http_status' | 'too_large' | 'network' | 'redirect',
+    readonly kind:
+      'blocked_host' | 'timeout' | 'http_status' | 'too_large' | 'network' | 'redirect',
     readonly status?: number,
   ) {
     super(message);

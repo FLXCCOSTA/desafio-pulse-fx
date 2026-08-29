@@ -44,10 +44,8 @@ export function SeriesChart({ observations, kind, unit }: Props): React.JSX.Elem
   const plotW = WIDTH - PADDING.left - PADDING.right;
   const plotH = HEIGHT - PADDING.top - PADDING.bottom;
 
-  const x = (index: number): number =>
-    PADDING.left + (index / (observations.length - 1)) * plotW;
-  const y = (value: number): number =>
-    PADDING.top + plotH - ((value - min) / span) * plotH;
+  const x = (index: number): number => PADDING.left + (index / (observations.length - 1)) * plotW;
+  const y = (value: number): number => PADDING.top + plotH - ((value - min) / span) * plotH;
 
   const line = observations.map((item, i) => `${x(i)},${y(item.value)}`).join(' ');
   const area = `${PADDING.left},${PADDING.top + plotH} ${line} ${PADDING.left + plotW},${PADDING.top + plotH}`;

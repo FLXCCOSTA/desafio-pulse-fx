@@ -145,7 +145,9 @@ describe('SyncService · TTL', () => {
     const h = makeHarness();
 
     await h.service.syncSeries(usdBrl, 'schedule');
-    h.setClock(new Date(Date.parse('2026-08-28T12:00:00Z') + TTL_BY_FREQUENCY.daily + 1).toISOString());
+    h.setClock(
+      new Date(Date.parse('2026-08-28T12:00:00Z') + TTL_BY_FREQUENCY.daily + 1).toISOString(),
+    );
 
     const result = await h.service.syncSeries(usdBrl, 'schedule');
 

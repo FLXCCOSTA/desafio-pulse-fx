@@ -17,7 +17,7 @@
  */
 
 import type { Observation } from '../../domain/series';
-import { HttpClient } from '../http/httpClient';
+import { type HttpClient } from '../http/httpClient';
 
 export const BCB_HOST = 'api.bcb.gov.br';
 

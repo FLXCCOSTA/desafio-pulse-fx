@@ -118,8 +118,7 @@ export class SyncRunsRepository {
     rowsUpserted: number,
     errorMessage?: string,
   ): Promise<void> {
-    const status =
-      outcome === 'success' ? 'success' : outcome === 'failed' ? 'failed' : 'skipped';
+    const status = outcome === 'success' ? 'success' : outcome === 'failed' ? 'failed' : 'skipped';
 
     await this.db.query(
       `INSERT INTO sync_runs

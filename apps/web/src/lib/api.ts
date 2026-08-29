@@ -39,7 +39,10 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
       // Sem isto o cookie de sessão não acompanha a requisição, e os favoritos
       // simplesmente não persistiriam.
       credentials: 'same-origin',
-      headers: { accept: 'application/json', ...(init?.body ? { 'content-type': 'application/json' } : {}) },
+      headers: {
+        accept: 'application/json',
+        ...(init?.body ? { 'content-type': 'application/json' } : {}),
+      },
       ...init,
     });
   } catch {
@@ -56,7 +59,7 @@ async function request<T>(path: string, schema: z.ZodType<T>, init?: RequestInit
     try {
       const body: unknown = await response.json();
       if (body && typeof body === 'object' && 'message' in body) {
-        message = String((body as { message: unknown }).message);
+        message = String(body.message);
       }
     } catch {
       // Corpo não-JSON: mantém o texto padrão.
@@ -74,7 +77,11 @@ export const api = {
       (data) => data.indicators,
     ),
 
-  getIndicator: (id: string, window: HistoryWindow, signal?: AbortSignal): Promise<IndicatorDetail> =>
+  getIndicator: (
+    id: string,
+    window: HistoryWindow,
+    signal?: AbortSignal,
+  ): Promise<IndicatorDetail> =>
     request(
       `/api/indicators/${encodeURIComponent(id)}?window=${window}`,
       indicatorDetailSchema,

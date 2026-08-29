@@ -25,8 +25,8 @@ export function App(): React.JSX.Element {
         <aside className="disclaimer">
           <span aria-hidden="true">ⓘ</span>
           <p style={{ margin: 0 }}>
-            <strong>Conteúdo educacional.</strong> Os dados vêm de fontes públicas oficiais e
-            são exibidos para fins informativos. Isto <strong>não</strong> é recomendação de
+            <strong>Conteúdo educacional.</strong> Os dados vêm de fontes públicas oficiais e são
+            exibidos para fins informativos. Isto <strong>não</strong> é recomendação de
             investimento, nem cotação para operação de câmbio.
           </p>
         </aside>
@@ -54,9 +54,15 @@ export function App(): React.JSX.Element {
 
         <footer className="foot">
           <p>
-            Fontes: <a href="https://dadosabertos.bcb.gov.br/" target="_blank" rel="noreferrer noopener">Banco Central do Brasil</a>
+            Fontes:{' '}
+            <a href="https://dadosabertos.bcb.gov.br/" target="_blank" rel="noreferrer noopener">
+              Banco Central do Brasil
+            </a>
             {' · '}
-            <a href="https://fred.stlouisfed.org/" target="_blank" rel="noreferrer noopener">FRED, Federal Reserve Bank of St. Louis</a>.
+            <a href="https://fred.stlouisfed.org/" target="_blank" rel="noreferrer noopener">
+              FRED, Federal Reserve Bank of St. Louis
+            </a>
+            .
           </p>
           <p>Pulse FX — projeto de desafio técnico, sem finalidade comercial.</p>
         </footer>

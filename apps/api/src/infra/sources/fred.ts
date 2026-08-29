@@ -14,7 +14,7 @@
  */
 
 import type { Observation } from '../../domain/series';
-import { HttpClient } from '../http/httpClient';
+import { type HttpClient } from '../http/httpClient';
 
 export const FRED_HOST = 'api.stlouisfed.org';
 
@@ -70,7 +70,9 @@ export class FredClient {
       sort_order: 'asc',
     });
 
-    const payload = await this.http.getJson(`${this.baseUrl}/series/observations?${query}`);
+    const payload = await this.http.getJson(
+      `${this.baseUrl}/series/observations?${query.toString()}`,
+    );
     return parseFredResponse(payload);
   }
 }
