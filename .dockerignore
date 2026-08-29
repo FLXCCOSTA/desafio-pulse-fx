@@ -1,0 +1,32 @@
+# Contexto de build enxuto: menos dados trafegados e, sobretudo, nenhum
+# segredo alcançável por um COPY distraído.
+
+# Segredos — o motivo mais importante deste arquivo
+.env
+.env.*
+!.env.example
+
+# Dependências: reinstaladas com npm ci dentro da imagem, a partir do lockfile
+node_modules
+**/node_modules
+
+# Artefatos de build local
+dist
+**/dist
+coverage
+**/coverage
+*.tsbuildinfo
+
+# Histórico e metadados que não pertencem à imagem
+.git
+.gitignore
+.github
+
+# Editor e SO
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Documentação não entra no runtime
+*.md

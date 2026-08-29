@@ -146,7 +146,7 @@ describe('calculateVariation · macro mensal', () => {
       return obs(year + '-' + month + '-01', 100 + index);
     });
 
-    const result = calculateVariation(series, 'macro_monthly');
+    const result = calculateVariation(series, 'macro_monthly_index');
 
     expect(result.latest?.referenceDate).toBe('2026-01-01');
     expect(result.baseline?.referenceDate).toBe('2025-01-01');
@@ -158,7 +158,7 @@ describe('calculateVariation · macro mensal', () => {
     // preferimos admitir a lacuna a comparar com o mês errado.
     const result = calculateVariation(
       [obs('2025-04-01', 100), obs('2025-05-01', 101), obs('2026-03-01', 110)],
-      'macro_monthly',
+      'macro_monthly_index',
     );
 
     expect(result.latest?.referenceDate).toBe('2026-03-01');
@@ -167,10 +167,49 @@ describe('calculateVariation · macro mensal', () => {
   });
 
   it('sinaliza base zero em série percentual', () => {
-    const result = calculateVariation([obs('2025-05-01', 0), obs('2026-05-01', 3)], 'macro_monthly');
+    const result = calculateVariation([obs('2025-05-01', 0), obs('2026-05-01', 3)], 'macro_monthly_index');
 
     expect(result.change).toBeNull();
     expect(result.unavailableReason).toBe('zero_baseline');
+  });
+
+  it('série que já é taxa compara em pontos percentuais, não em porcentagem', () => {
+    // Valores reais do IPCA observados em produção: 0,26% em julho/2025 e
+    // 0,07% em julho/2026. Tratados como índice, produziam "−73,08%" no card —
+    // número sem significado, porque é a variação percentual de uma taxa
+    // percentual. A leitura correta é −0,19 p.p.
+    const result = calculateVariation(
+      [obs('2025-07-01', 0.26), obs('2026-07-01', 0.07)],
+      'macro_monthly_rate',
+    );
+
+    expect(result.unit).toBe('percentage_points');
+    expect(result.change).toBeCloseTo(-0.19, 10);
+  });
+
+  it('série que é número-índice continua em porcentagem', () => {
+    // Contraste deliberado com o caso acima: o US CPI é nível de preço
+    // (332,813), e nele a variação interanual em porcentagem é exatamente a
+    // inflação acumulada em 12 meses.
+    const result = calculateVariation(
+      [obs('2025-07-01', 322.17), obs('2026-07-01', 332.813)],
+      'macro_monthly_index',
+    );
+
+    expect(result.unit).toBe('percent');
+    expect(result.change).toBeCloseTo(3.3035, 3);
+  });
+
+  it('base zero numa série de taxa não impede o cálculo', () => {
+    // Inflação de 0,00% num mês é leitura legítima, e a subtração é definida:
+    // seria errado esconder a variação só porque o denominador seria zero.
+    const result = calculateVariation(
+      [obs('2025-07-01', 0), obs('2026-07-01', 0.07)],
+      'macro_monthly_rate',
+    );
+
+    expect(result.change).toBeCloseTo(0.07, 10);
+    expect(result.unavailableReason).toBeNull();
   });
 });
 

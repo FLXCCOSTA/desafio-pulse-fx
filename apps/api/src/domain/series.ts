@@ -31,8 +31,23 @@ export type SeriesKind =
    * Diferente de `fx_daily`: é taxa, logo varia em pontos percentuais.
    */
   | 'yield_daily'
-  /** Índice macro de periodicidade mensal (IPCA, CPI). */
-  | 'macro_monthly';
+  /**
+   * Número-índice macro de periodicidade mensal (US CPI). O valor é um nível
+   * (332,813), não uma taxa, então a leitura útil é a variação interanual em
+   * porcentagem — que é exatamente a inflação acumulada em 12 meses.
+   */
+  | 'macro_monthly_index'
+  /**
+   * Taxa macro já expressa em porcentagem, de periodicidade mensal (IPCA, que
+   * o SGS publica como variação percentual do mês, não como índice).
+   *
+   * Separado de `macro_monthly_index` por um erro real observado ao rodar o
+   * sistema com dados de produção: tratar o IPCA como índice produzia
+   * "−73,08%" no card, comparando 0,07% de julho/2026 com 0,26% de
+   * julho/2025. Variação percentual de uma taxa percentual não tem significado
+   * para o leitor — a comparação correta é em pontos percentuais.
+   */
+  | 'macro_monthly_rate';
 
 /**
  * Unidade da variação.
@@ -93,10 +108,16 @@ export const DEFAULT_VARIATION_POLICY: Readonly<Record<SeriesKind, VariationPoli
     unit: 'percentage_points',
     label: 'vs. pregão anterior',
   },
-  macro_monthly: {
+  macro_monthly_index: {
     strategy: 'calendar-months',
     lookback: 12,
     unit: 'percent',
+    label: 'vs. mesmo mês do ano anterior',
+  },
+  macro_monthly_rate: {
+    strategy: 'calendar-months',
+    lookback: 12,
+    unit: 'percentage_points',
     label: 'vs. mesmo mês do ano anterior',
   },
 };
@@ -124,10 +145,16 @@ export const MEDIUM_TERM_POLICY: Readonly<Record<SeriesKind, VariationPolicy>> =
     unit: 'percentage_points',
     label: 'vs. 21 pregões atrás',
   },
-  macro_monthly: {
+  macro_monthly_index: {
     strategy: 'calendar-months',
     lookback: 1,
     unit: 'percent',
+    label: 'vs. mês anterior',
+  },
+  macro_monthly_rate: {
+    strategy: 'calendar-months',
+    lookback: 1,
+    unit: 'percentage_points',
     label: 'vs. mês anterior',
   },
 };

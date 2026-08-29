@@ -19,14 +19,20 @@ import type { SeriesRecord, SeriesRepository } from '../infra/db/seriesRepositor
 /**
  * A partir de quantos dias sem observação nova a série é considerada defasada.
  *
- * Diária: 4 dias cobre um fim de semana prolongado por feriado sem alarme
- * falso. Mensal: 45 dias, porque o IPCA sai com algumas semanas de defasagem
- * em relação ao mês de referência — marcar como defasado antes disso seria
- * ruído, não informação.
+ * Diária: 4 dias cobre um fim de semana prolongado por feriado sem alarme falso.
+ *
+ * Mensal: 70 dias. O limiar anterior, de 45, marcava IPCA e CPI como defasados
+ * em operação normal — erro observado ao rodar o sistema em 29/08/2026, quando
+ * a observação mais recente era 01/07 e a distância já passava de 59 dias.
+ *
+ * A conta que 45 ignorava: a série é datada no primeiro dia do mês, então já
+ * nasce com até 31 dias de idade quando o mês fecha, e a publicação leva mais
+ * duas a três semanas. Alarme que dispara em operação normal deixa de ser
+ * informação e vira ruído que o usuário aprende a ignorar.
  */
 export const STALE_AFTER_DAYS: Readonly<Record<'daily' | 'monthly', number>> = {
   daily: 4,
-  monthly: 45,
+  monthly: 70,
 };
 
 /** Quanto histórico o cálculo precisa ver, por tipo de série. */

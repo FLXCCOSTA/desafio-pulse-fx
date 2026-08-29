@@ -1,0 +1,80 @@
+# Ambiente completo do Pulse FX.
+#
+#   docker compose up -d --build
+#
+# Três serviços com dependências explícitas: o Postgres precisa estar saudável
+# antes das migrations, e as migrations precisam ter terminado antes da API.
+# Sem isso, a API sobe contra um banco sem tabela e falha de forma confusa.
+
+name: pulse-fx
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-pulsefx}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?defina POSTGRES_PASSWORD no .env}
+      POSTGRES_DB: ${POSTGRES_DB:-pulsefx}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      # Restrito ao usuário e ao banco corretos: pg_isready sem argumento
+      # responde 'pronto' cedo demais, antes de o banco existir.
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-pulsefx} -d ${POSTGRES_DB:-pulsefx}']
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Não exposto ao host por padrão. Descomente apenas se precisar inspecionar
+    # o banco de fora — porta de banco aberta é superfície desnecessária.
+    # ports:
+    #   - '5432:5432'
+
+  migrate:
+    image: postgres:17-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pulsefx}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pulsefx}
+    volumes:
+      - ./db/migrations:/migrations:ro
+      - ./db/migrate.sh:/migrate.sh:ro
+    entrypoint: ['/bin/sh', '/migrate.sh']
+    restart: 'no'
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pulsefx}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB:-pulsefx}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5173}
+      ADMIN_SYNC_TOKEN: ${ADMIN_SYNC_TOKEN:?defina ADMIN_SYNC_TOKEN no .env}
+      FRED_API_KEY: ${FRED_API_KEY:?defina FRED_API_KEY no .env}
+      BCB_TIMEOUT_MS: ${BCB_TIMEOUT_MS:-25000}
+      FRED_TIMEOUT_MS: ${FRED_TIMEOUT_MS:-8000}
+      SYNC_ON_STARTUP: ${SYNC_ON_STARTUP:-true}
+      SYNC_INTERVAL_MINUTES: ${SYNC_INTERVAL_MINUTES:-120}
+    ports:
+      - '${PORT:-3333}:3333'
+    security_opt:
+      # Impede que o processo ganhe privilégio além do que já tem, mesmo por
+      # binário setuid dentro da imagem.
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /tmp
+    cap_drop:
+      - ALL
+
+volumes:
+  postgres-data:

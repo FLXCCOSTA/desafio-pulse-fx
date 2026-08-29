@@ -18,7 +18,8 @@ export const seriesKindSchema = z.enum([
   'fx_daily',
   'policy_rate',
   'yield_daily',
-  'macro_monthly',
+  'macro_monthly_index',
+  'macro_monthly_rate',
 ]);
 
 export const variationUnitSchema = z.enum(['percent', 'percentage_points']);
