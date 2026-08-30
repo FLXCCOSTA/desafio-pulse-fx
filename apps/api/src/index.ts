@@ -16,6 +16,7 @@ import {
   type SyncResult,
   type SyncTrigger,
 } from './application/syncService';
+import { startupSync } from './application/startup';
 import { loadConfig } from './config';
 import { ObservationsRepository } from './infra/db/observationsRepository';
 import {
@@ -136,7 +137,7 @@ async function main(): Promise<void> {
   if (config.syncOnStartup) {
     // Não bloqueia o boot: a API sobe e serve o que já está persistido enquanto
     // a primeira carga acontece em segundo plano.
-    void runSync('startup').catch((error: unknown) => {
+    void startupSync(pool, runSync, app.log).catch((error: unknown) => {
       app.log.error({ err: error }, 'sincronização inicial falhou');
     });
   }
