@@ -60,8 +60,10 @@ Suba tudo:
 docker compose up -d --build
 ```
 
-A API fica em **http://localhost:3333** e a primeira sincronização começa
-sozinha, trazendo cerca de 7.600 observações reais das duas fontes.
+Pronto. O **painel abre em http://localhost:5173** e a API responde em
+http://localhost:3333. A primeira sincronização começa sozinha, trazendo cerca
+de 7.600 observações reais das duas fontes — leva alguns minutos, e a interface
+já funciona enquanto isso, exibindo o que foi persistido até o momento.
 
 Confira:
 
@@ -111,6 +113,7 @@ valores**. O `.env` real nunca entra no Git nem na imagem Docker.
 | `SYNC_INTERVAL_MINUTES` | | `120` | Intervalo do agendador |
 | `RATE_LIMIT_MAX` | | `120` | Requisições por janela, por IP |
 | `RATE_LIMIT_WINDOW_MINUTES` | | `1` | Tamanho da janela do rate limit |
+| `WEB_PORT` | | `5173` | Porta em que o painel é publicado |
 | `TRUST_PROXY` | | `false` | Confiar em `X-Forwarded-For`. Só ative com proxy confiável à frente |
 
 A configuração é validada por schema Zod **no boot**. Se algo faltar ou estiver
@@ -168,13 +171,17 @@ e um dublê provaria apenas que escrevemos a string SQL que imaginamos escrever.
 
 ## Rodar o frontend em desenvolvimento
 
+O Compose já publica o painel em http://localhost:5173, servido por nginx. Esta
+seção é para desenvolver com recarga automática.
+
 Com a API já no ar pelo Compose:
 
 ```bash
 npm run dev --workspace @pulse-fx/web
 ```
 
-Abre em **http://localhost:5173**. O Vite faz proxy de `/api` para a porta 3333,
+Abre em **http://localhost:5174** (o Vite escolhe outra porta se a 5173 estiver
+ocupada pelo container). O Vite faz proxy de `/api` para a porta 3333,
 mantendo a mesma origem no navegador — o que faz o cookie de sessão funcionar
 sem afrouxar `SameSite`. Afrouxar seria trocar segurança por conveniência de
 desenvolvimento.
@@ -386,7 +393,7 @@ pulse-fx/
 │   │       ├── http/         Rotas, sessão, middlewares de segurança
 │   │       ├── config.ts     Validação do ambiente
 │   │       └── index.ts      Composition root
-│   └── web/                  React 19 + TypeScript + Vite + PWA
+│   └── web/                  React 19 + TypeScript + Vite + PWA, servido por nginx
 │       └── src/
 │           ├── components/   Card, badge de variação, gráfico
 │           ├── pages/        Dashboard e detalhe
