@@ -1,4 +1,14 @@
-# syntax=docker/dockerfile:1
+# Sem a diretiva `# syntax=docker/dockerfile:1` de propósito.
+#
+# Ela obriga o BuildKit a resolver e baixar a imagem do frontend no Docker Hub
+# antes de ler qualquer linha do arquivo — o que exige acesso ao registro e ao
+# helper de credenciais logo no primeiro passo. Numa máquina onde esse helper
+# não está no PATH, o build falha com "error getting credentials" sem nunca
+# chegar a construir nada, e a mensagem não deixa claro que a causa é ambiental.
+#
+# Este Dockerfile usa apenas recursos do frontend nativo: multi-stage,
+# COPY --from, --chown e HEALTHCHECK. A diretiva não trazia nada e custava um
+# ponto de falha na primeira execução de quem clona o repositório.
 
 # ─── Estágio de build ─────────────────────────────────────────────
 # O toolchain de build (TypeScript, esbuild, dependências de teste) fica só
