@@ -144,7 +144,7 @@ npm run typecheck
 npm run format
 ```
 
-**129 testes em 8 arquivos.** O briefing pede no mínimo 5:
+**197 testes em 12 arquivos.** O briefing pede no mínimo 5:
 
 | # | Arquivo | O que verifica |
 |---|---|---|
@@ -154,8 +154,9 @@ npm run format
 | 4 | `apps/web/src/components/IndicatorCard.test.tsx` | Frontend: formatação, direção da variação sem cor, rótulos de acessibilidade, teclado |
 | 5 | `apps/api/src/infra/sources/sources.test.ts` | Integração com as fontes: parsing das respostas reais e defesas contra SSRF |
 
-E mais três além do exigido: `circuitBreaker.test.ts`, `syncService.test.ts` e
-`config.test.ts`.
+E mais sete além do exigido: `circuitBreaker.test.ts`, `syncService.test.ts`,
+`config.test.ts`, `startup.test.ts`, `SeriesChart.test.tsx`, `Dashboard.test.tsx`
+e `IndicatorDetail.test.tsx`.
 
 O teste de persistência usa Testcontainers e roda as **migrations reais**, não
 um schema paralelo escrito para o teste — assim ele também protege contra
@@ -641,9 +642,10 @@ Honestidade sobre o que **não** está resolvido:
   de 1.250 pontos num único payload. Funciona bem nessa ordem de grandeza, mas
   não escalaria para séries intradiárias.
 - **O gráfico não tem interação.** Sem tooltip por ponto nem zoom.
-- **Sem cobertura de teste no `SeriesChart` e nas páginas.** A lógica de
-  geometria e os estados de carregamento foram verificados manualmente no
-  navegador, não automatizados.
+- **O `index.ts` não tem teste próprio.** É o composition root: monta as peças
+  e sobe o processo. A lógica que valeria testar foi movida para
+  `application/startup.ts`, que tem cobertura. O que resta ali é fiação,
+  exercitada de ponta a ponta pelo job de Compose no CI.
 - **Sem deploy real.** O pipeline constrói, testa e escaneia a imagem, mas não
   publica em registro nem provisiona infraestrutura.
 - **Uma única instância, sem observabilidade além de log estruturado.** Sem
