@@ -1,0 +1,30 @@
+# Normalização de fim de linha.
+#
+# Sem este arquivo, o Git converte para CRLF ao clonar no Windows. Isso quebra
+# qualquer script de shell executado dentro de um container Linux: o `\r` vira
+# parte do comando, e o `sh` responde com "illegal option" ou ":  not found".
+#
+# Foi exatamente o que aconteceu numa execução limpa em 31/08/2026: o serviço
+# `migrate` do Compose falhou com exit 2 num clone recém-feito em Windows, e o
+# ambiente inteiro não subiu.
+#
+# Como todo arquivo deste repositório que é *executado* roda dentro de container
+# Linux — scripts, SQL, Dockerfile, workflows — a normalização é para LF em
+# todos, inclusive no working copy do Windows. Editores modernos lidam com LF
+# sem qualquer problema.
+
+* text=auto eol=lf
+
+# Explícito onde o custo de errar é o ambiente não subir.
+*.sh   text eol=lf
+*.sql  text eol=lf
+*.yml  text eol=lf
+*.yaml text eol=lf
+Dockerfile text eol=lf
+
+# Binários não devem ser tocados.
+*.png  binary
+*.jpg  binary
+*.ico  binary
+*.woff binary
+*.woff2 binary
