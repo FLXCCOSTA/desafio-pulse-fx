@@ -12,6 +12,7 @@ Reserve Bank de St. Louis.
 ## Sumário
 
 - [Subir o ambiente](#subir-o-ambiente)
+  - [Se o build falhar por credenciais (Windows)](#se-o-build-falhar-por-credenciais-windows)
 - [Variáveis de ambiente](#variáveis-de-ambiente)
 - [Rodar testes e lint](#rodar-testes-e-lint)
 - [Rodar o frontend em desenvolvimento](#rodar-o-frontend-em-desenvolvimento)
@@ -88,6 +89,30 @@ Para derrubar apagando o volume do banco:
 ```bash
 docker compose down -v
 ```
+
+### Se o build falhar por credenciais (Windows)
+
+Num terminal cujo `PATH` está incompleto, o build morre com uma mensagem que não
+diz qual é a causa real:
+
+```
+error getting credentials - err: exec: "docker-credential-desktop":
+executable file not found in %PATH%
+```
+
+O Docker Desktop consulta esse auxiliar antes de resolver **qualquer** imagem,
+mesmo as públicas, porque `~/.docker/config.json` traz `"credsStore": "desktop"`.
+Se o terminal não enxerga o executável, nada é baixado. O sintoma costuma vir
+acompanhado de `git.exe not found`, que é a mesma causa.
+
+Abrir um terminal novo resolve. Para corrigir na sessão atual:
+
+```powershell
+$env:Path = [Environment]::GetEnvironmentVariable('Path','Machine') + ';' + [Environment]::GetEnvironmentVariable('Path','User')
+```
+
+Não é um problema do projeto — é o ambiente. Está aqui porque a mensagem do
+Docker não indica a causa, e o tempo perdido procurando no lugar errado é real.
 
 ---
 
