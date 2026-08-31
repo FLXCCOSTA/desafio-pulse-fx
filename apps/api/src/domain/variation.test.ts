@@ -295,3 +295,58 @@ describe('shiftMonths', () => {
     expect(shiftMonths('2026-03-01', 26)).toBe('2024-01');
   });
 });
+
+describe('calculateVariation · janela de médio prazo por tipo', () => {
+  /**
+   * Regressão de um problema visível na interface, encontrado ao rodar um clone
+   * limpo em 31/08/2026: a tela de detalhe da Selic exibia um traço permanente
+   * na variação de médio prazo.
+   *
+   * A política pede o quarto patamar anterior, e o Copom se reúne cerca de oito
+   * vezes ao ano — mas o serviço carregava apenas 120 dias de histórico para
+   * séries diárias. Nunca havia quatro decisões na janela. Não era cálculo
+   * errado: era histórico insuficiente para a pergunta feita.
+   */
+  it('com histórico suficiente, a Selic encontra o quarto patamar anterior', () => {
+    // Cinco patamares ao longo de ~1,5 ano, repetindo o valor todos os dias
+    // entre decisões — como o SGS de fato publica.
+    const patamares: Array<[string, number]> = [
+      ['2025-03-20', 12.0],
+      ['2025-06-19', 12.75],
+      ['2025-09-18', 13.5],
+      ['2025-12-11', 14.25],
+      ['2026-08-06', 14.0],
+    ];
+
+    const series: Observation[] = [];
+    for (const [inicio, valor] of patamares) {
+      // 30 repetições diárias por patamar bastam para reproduzir o padrão.
+      for (let dia = 0; dia < 30; dia += 1) {
+        const data = new Date(`${inicio}T00:00:00Z`);
+        data.setUTCDate(data.getUTCDate() + dia);
+        series.push(obs(data.toISOString().slice(0, 10), valor));
+      }
+    }
+
+    const result = calculateVariation(series, 'policy_rate', {
+      policy: MEDIUM_TERM_POLICY.policy_rate,
+    });
+
+    // Quatro patamares atrás de 14,00: 14,25 · 13,50 · 12,75 · 12,00.
+    expect(result.baseline?.value).toBe(12.0);
+    expect(result.change).toBeCloseTo(2, 10);
+    expect(result.unit).toBe('percentage_points');
+  });
+
+  it('com histórico curto, admite a lacuna em vez de comparar com o patamar errado', () => {
+    // Apenas dois patamares na janela: não há quarto.
+    const series = [obs('2026-08-05', 14.25), obs('2026-08-06', 14.0), obs('2026-08-07', 14.0)];
+
+    const result = calculateVariation(series, 'policy_rate', {
+      policy: MEDIUM_TERM_POLICY.policy_rate,
+    });
+
+    expect(result.change).toBeNull();
+    expect(result.unavailableReason).toBe('no_baseline');
+  });
+});

@@ -11,7 +11,12 @@
 import { HISTORY_WINDOW_DAYS, type HistoryWindow } from '@pulse-fx/contracts';
 import type { IndicatorDetail, IndicatorSummary, Variation } from '@pulse-fx/contracts';
 
-import { DEFAULT_VARIATION_POLICY, MEDIUM_TERM_POLICY, type Observation } from '../domain/series';
+import {
+  DEFAULT_VARIATION_POLICY,
+  MEDIUM_TERM_POLICY,
+  type Observation,
+  type SeriesKind,
+} from '../domain/series';
 import { calculateVariation } from '../domain/variation';
 import type { ObservationsRepository } from '../infra/db/observationsRepository';
 import type { SeriesRecord, SeriesRepository } from '../infra/db/seriesRepository';
@@ -35,12 +40,38 @@ export const STALE_AFTER_DAYS: Readonly<Record<'daily' | 'monthly', number>> = {
   monthly: 70,
 };
 
-/** Quanto histórico o cálculo precisa ver, por tipo de série. */
-const LOOKBACK_DAYS_FOR_VARIATION: Readonly<Record<'daily' | 'monthly', number>> = {
-  // Cobre a janela de 21 pregões e feriados prolongados com folga.
+/**
+ * Histórico necessário para a variação **de curto prazo**, exibida no card.
+ *
+ * É o que o dashboard carrega para as sete séries a cada requisição, então cada
+ * dia a mais aqui custa em toda carga de tela.
+ */
+const LOOKBACK_FOR_DEFAULT: Readonly<Record<'daily' | 'monthly', number>> = {
+  // Cobre feriados prolongados e lacunas de publicação com folga.
   daily: 120,
   // Cobre a comparação interanual com margem para mês faltante.
   monthly: 500,
+};
+
+/**
+ * Histórico necessário para a variação **de médio prazo**, exibida apenas na
+ * tela de detalhe. Separado do anterior de propósito: o dashboard não precisa
+ * dele, e carregá-lo ali penalizaria a tela mais acessada do produto.
+ *
+ * O valor de `policy_rate` é o mais alto por um motivo concreto, observado
+ * rodando o sistema: a política de médio prazo compara com o quarto patamar
+ * anterior, e o Copom se reúne cerca de oito vezes ao ano. Com 120 dias — o
+ * suficiente para as demais séries — a Selic nunca acumulava quatro decisões, e
+ * a tela de detalhe exibia um traço permanente no lugar do número. Não estava
+ * errado, mas uma métrica que nunca aparece é peso morto na interface.
+ */
+const LOOKBACK_FOR_MEDIUM_TERM: Readonly<Record<SeriesKind, number>> = {
+  fx_daily: 120,
+  yield_daily: 120,
+  // Cerca de dois anos e meio: espaço para quatro decisões do Copom com folga.
+  policy_rate: 900,
+  macro_monthly_index: 500,
+  macro_monthly_rate: 500,
 };
 
 function daysBetween(fromIso: string, toIso: string): number {
@@ -114,7 +145,7 @@ export class IndicatorsService {
     for (const series of seriesList) {
       const history = await this.observationsRepository.findWindow(
         series.id,
-        LOOKBACK_DAYS_FOR_VARIATION[series.frequency],
+        LOOKBACK_FOR_DEFAULT[series.frequency],
       );
 
       summaries.push(this.buildSummary(series, history, favorites));
@@ -135,7 +166,13 @@ export class IndicatorsService {
     // que a variação não fique indisponível só porque o usuário escolheu 30 dias
     // numa série mensal.
     const requestedDays = HISTORY_WINDOW_DAYS[window];
-    const neededDays = Math.max(requestedDays, LOOKBACK_DAYS_FOR_VARIATION[series.frequency]);
+    // O detalhe precisa do maior entre: a janela pedida pelo usuário, o mínimo
+    // do cálculo de curto prazo e o mínimo do de médio prazo.
+    const neededDays = Math.max(
+      requestedDays,
+      LOOKBACK_FOR_DEFAULT[series.frequency],
+      LOOKBACK_FOR_MEDIUM_TERM[series.kind],
+    );
 
     const full = await this.observationsRepository.findWindow(series.id, neededDays);
     const summary = this.buildSummary(series, full, new Set(favoriteIds));
