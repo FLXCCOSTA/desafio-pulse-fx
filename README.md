@@ -428,6 +428,7 @@ pulse-fx/
 ├── db/
 │   ├── migrations/           SQL versionado
 │   └── migrate.sh            Aplicador com tabela schema_migrations
+├── docs/                     Apresentação do projeto (HTML, abre no navegador)
 ├── .github/workflows/ci.yml
 └── docker-compose.yml
 ```

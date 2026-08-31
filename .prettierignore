@@ -3,3 +3,8 @@ coverage
 node_modules
 package-lock.json
 *.md
+
+# Artefatos de apresentação: HTML já empacotado, gerado fora do projeto.
+# A exceção é delimitada a docs/ de propósito — na raiz, seria uma brecha que
+# aceitaria qualquer arquivo solto sem passar pelo gate de formatação.
+docs/*.html
