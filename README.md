@@ -172,7 +172,7 @@ npm run typecheck
 npm run format
 ```
 
-**197 testes em 12 arquivos.** O briefing pede no mínimo 5:
+**199 testes em 12 arquivos.** O briefing pede no mínimo 5:
 
 | # | Arquivo | O que verifica |
 |---|---|---|
